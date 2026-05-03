@@ -1,4 +1,4 @@
-# YT Music for Mac 🎵
+# YT Music for Mac 
 
 A polished YouTube Music desktop client for macOS with **Discord Rich Presence** support — shows what you're listening to on your Discord profile.
 
@@ -9,11 +9,11 @@ A polished YouTube Music desktop client for macOS with **Discord Rich Presence**
 
 ## Features
 
-- 🎧 **Full YouTube Music experience** — native webview with persistent login
-- 🎮 **Discord Rich Presence** — show current track on Discord (toggle on/off)
-- 🔔 **System Tray** — media controls from the menu bar icon
-- ⚙️ **Settings panel** — configure every RPC detail
-- 🌙 **macOS native feel** — vibrancy, hidden titlebar, traffic lights
+-  **Full YouTube Music experience** — native webview with persistent login
+-  **Discord Rich Presence** — show current track on Discord (toggle on/off)
+-  **System Tray** — media controls from the menu bar icon
+-  **Settings panel** — configure every RPC detail
+-  **macOS native feel** — vibrancy, hidden titlebar, traffic lights
 
 ---
 
@@ -123,9 +123,3 @@ iconutil -c icns icon.iconset
 - **discord-rpc** — Discord IPC client
 - **electron-store** — persistent settings storage
 - **electron-builder** — packaging & distribution
-
----
-
-## License
-
-MIT — unofficial project, not affiliated with YouTube or Discord.
