@@ -1,0 +1,33 @@
+{
+  "name": "ytmusic-mac",
+  "version": "1.0.0",
+  "description": "YouTube Music desktop client for macOS with Discord Rich Presence",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --mac",
+    "build:dmg": "electron-builder --mac dmg",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": ["youtube-music", "discord", "rich-presence", "macos", "electron"],
+  "author": "YTMusic Mac",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.ytmusic.mac",
+    "productName": "YT Music",
+    "mac": {
+      "category": "public.app-category.music",
+      "target": ["dmg", "zip"]
+    },
+    "files": ["src/**/*", "assets/**/*", "package.json"]
+  }
+}
