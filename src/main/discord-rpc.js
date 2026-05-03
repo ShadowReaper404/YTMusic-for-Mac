@@ -134,19 +134,13 @@ class DiscordRPCManager {
       activity.endTimestamp = Math.floor((now + (track.duration - (track.currentTime || 0)) * 1000) / 1000);
     }
 
-    // Images
-    // Discord now supports external HTTPS URLs directly in the image keys.
-    // Instead of requiring the user to upload static assets to the Developer Portal,
-    // we just pass the live album art thumbnail!
-    // Note: YTM initially uses a data: URI for thumbnails, which crashes Discord RPC.
-    if (track.thumbnailUrl && track.thumbnailUrl.startsWith('http')) {
-      activity.largeImageKey = track.thumbnailUrl;
-      activity.largeImageText = track.album || 'YouTube Music';
-    } else {
-      // Fallback public logo if no valid thumbnail is available
-      activity.largeImageKey = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Youtube_Music_icon.svg/512px-Youtube_Music_icon.svg.png';
-      activity.largeImageText = 'YouTube Music';
-    }
+    // Discord automatically uses your Application's main icon (the one you upload 
+    // in the General Information tab of the Developer Portal) as the large image 
+    // if no largeImageKey is provided. Since Discord removed the Art Assets section, 
+    // this is the official way to show the app logo!
+    
+    // We only set the tooltip text for the large image here.
+    activity.largeImageText = track.album || 'YouTube Music';
     
     // We omit smallImageKey since it requires a public URL for play/pause, 
     // and the album art looks much cleaner on its own anyway.
@@ -168,13 +162,21 @@ class DiscordRPCManager {
 
   destroy() {
     clearTimeout(this._reconnectTimer);
+    this.isConnected = false;
+    
     if (this.client) {
       try {
-        this.client.destroy();
+        // Explicitly clear the activity so Discord doesn't hang onto it
+        this.client.clearActivity().catch(() => {});
+        
+        // Wait just a tiny bit for the IPC packet to flush before severing the socket
+        const c = this.client;
+        setTimeout(() => {
+          try { c.destroy(); } catch {}
+        }, 100);
       } catch {}
       this.client = null;
     }
-    this.isConnected = false;
   }
 }
 

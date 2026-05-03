@@ -60,6 +60,10 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('before-quit', () => { discordRPC?.destroy(); });
 
+// Handle terminal termination gracefully so Discord gets disconnected
+process.on('SIGINT', () => { app.quit(); });
+process.on('SIGTERM', () => { app.quit(); });
+
 // ─── Main Window (loads local UI with webview) ───────────────────────────────
 function createWindow() {
   const { width, height, x, y } = store.get('window');
