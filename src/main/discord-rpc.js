@@ -134,13 +134,15 @@ class DiscordRPCManager {
       activity.endTimestamp = Math.floor((now + (track.duration - (track.currentTime || 0)) * 1000) / 1000);
     }
 
-    // Discord automatically uses your Application's main icon (the one you upload 
-    // in the General Information tab of the Developer Portal) as the large image 
-    // if no largeImageKey is provided. Since Discord removed the Art Assets section, 
-    // this is the official way to show the app logo!
-    
-    // We only set the tooltip text for the large image here.
-    activity.largeImageText = track.album || 'YouTube Music';
+    // Images
+    // Use the live album art if it's a valid HTTP URL. Ignore data: URI placeholders
+    // that YouTube Music briefly uses during song transitions.
+    if (track.thumbnailUrl && track.thumbnailUrl.startsWith('http')) {
+      activity.largeImageKey = track.thumbnailUrl;
+      activity.largeImageText = track.album || 'YouTube Music';
+    } else {
+      activity.largeImageText = 'YouTube Music';
+    }
     
     // We omit smallImageKey since it requires a public URL for play/pause, 
     // and the album art looks much cleaner on its own anyway.

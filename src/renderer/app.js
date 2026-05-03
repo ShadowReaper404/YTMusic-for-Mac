@@ -49,6 +49,7 @@ webview.addEventListener('did-stop-loading', () => {
 let trackPollInterval = null;
 let lastTitle = '';
 let lastPlaying = null;
+let lastThumbnail = '';
 
 function startTrackScraper() {
   clearInterval(trackPollInterval);
@@ -85,9 +86,10 @@ function startTrackScraper() {
       const info = await webview.executeJavaScript(getInfoCode);
       if (!info) return;
       
-      if (info.title !== lastTitle || info.isPlaying !== lastPlaying) {
+      if (info.title !== lastTitle || info.isPlaying !== lastPlaying || info.thumbnailUrl !== lastThumbnail) {
         lastTitle = info.title;
         lastPlaying = info.isPlaying;
+        lastThumbnail = info.thumbnailUrl;
         
         // Update local UI
         currentTrack = info;
