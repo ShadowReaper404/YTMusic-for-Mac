@@ -27,8 +27,8 @@ A polished YouTube Music desktop client for macOS with **Discord Rich Presence**
 ### 2. Install
 
 ```bash
-git clone <your-repo-url>
-cd ytmusic-mac
+git clone https://github.com/ShadowReaper404/YTMusic-for-Mac.git
+cd YTMusic-for-Mac
 npm install
 ```
 
