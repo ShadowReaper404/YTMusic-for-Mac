@@ -20,12 +20,13 @@ contextBridge.exposeInMainWorld('ytmusic', {
 
   // ── App Info ──────────────────────────────────────────────────────────────
   getVersion: () => ipcRenderer.invoke('app:version'),
+  openSignIn: () => ipcRenderer.send('open:signin'),
 
   // ── Listeners (main → renderer) ───────────────────────────────────────────
   on: (channel, fn) => {
     const allowed = [
       'control:toggle', 'control:prev', 'control:next',
-      'nav:settings', 'settings:rpc-changed',
+      'nav:settings', 'settings:rpc-changed', 'auth:reload-webview',
     ];
     if (allowed.includes(channel)) {
       const wrapped = (_, ...args) => fn(...args);

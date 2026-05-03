@@ -91,6 +91,7 @@ class DiscordRPCManager {
     this._lastActivity = activity;
 
     try {
+      console.log('[Discord RPC] Sending activity:', JSON.stringify(activity, null, 2));
       this.client.setActivity(activity);
     } catch (err) {
       console.error('[Discord RPC] setActivity failed:', err.message);
@@ -109,9 +110,7 @@ class DiscordRPCManager {
       };
     }
 
-    const activity = {
-      instance: false,
-    };
+    const activity = {};
 
     // Details line (song title)
     if (cfg.showSongTitle && track.title) {
@@ -136,20 +135,24 @@ class DiscordRPCManager {
     }
 
     // Images
-    activity.largeImageKey = 'ytmusic';
-    activity.largeImageText = track.album || 'YouTube Music';
-    activity.smallImageKey = track.isPlaying ? 'playing' : 'paused';
-    activity.smallImageText = track.isPlaying ? 'Playing' : 'Paused';
-
-    // Buttons (Discord supports up to 2)
-    if (cfg.showPlaybackButtons && track.videoId) {
-      activity.buttons = [
-        {
-          label: '▶  Listen on YouTube Music',
-          url: `https://music.youtube.com/watch?v=${track.videoId}`,
-        },
-      ];
+    // Discord now supports external HTTPS URLs directly in the image keys.
+    // Instead of requiring the user to upload static assets to the Developer Portal,
+    // we just pass the live album art thumbnail!
+    // Note: YTM initially uses a data: URI for thumbnails, which crashes Discord RPC.
+    if (track.thumbnailUrl && track.thumbnailUrl.startsWith('http')) {
+      activity.largeImageKey = track.thumbnailUrl;
+      activity.largeImageText = track.album || 'YouTube Music';
+    } else {
+      // Fallback public logo if no valid thumbnail is available
+      activity.largeImageKey = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Youtube_Music_icon.svg/512px-Youtube_Music_icon.svg.png';
+      activity.largeImageText = 'YouTube Music';
     }
+    
+    // We omit smallImageKey since it requires a public URL for play/pause, 
+    // and the album art looks much cleaner on its own anyway.
+
+    // (Omitted buttons because Discord IPC often silently rejects the entire
+    // payload for standard users if buttons are included without proper auth)
 
     return activity;
   }

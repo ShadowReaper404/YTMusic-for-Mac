@@ -18,6 +18,16 @@ navBtns.forEach(btn => {
 // From main process (tray menu, etc.)
 window.ytmusic.on('nav:settings', () => showView('settings'));
 
+// Sign In button → opens a clean BrowserWindow so Google allows it
+document.getElementById('signInBtn')?.addEventListener('click', () => {
+  window.ytmusic.openSignIn();
+});
+
+// After sign-in completes, reload the webview to pick up the new session
+window.ytmusic.on('auth:reload-webview', () => {
+  webview?.loadURL('https://music.youtube.com');
+});
+
 // ─── WebView + Track Scraping ─────────────────────────────────────────────────
 const webview = document.getElementById('ytmWebview');
 const loadingEl = document.getElementById('webviewLoading');
@@ -35,90 +45,70 @@ webview.addEventListener('did-stop-loading', () => {
   setTimeout(() => loadingEl.classList.add('hidden'), 500);
 });
 
-// Inject a polling script into the YTM webview to read track data
+// Track polling state
+let trackPollInterval = null;
+let lastTitle = '';
+let lastPlaying = null;
+
 function startTrackScraper() {
-  const scraperCode = `
+  clearInterval(trackPollInterval);
+  
+  // The function to evaluate in the webview
+  const getInfoCode = `
     (function() {
-      if (window.__ytmScraperRunning) return;
-      window.__ytmScraperRunning = true;
-
-      function getTrackInfo() {
-        try {
-          // Title
-          const titleEl = document.querySelector('.title.ytmusic-player-bar') ||
-                          document.querySelector('yt-formatted-string.title');
-          const title = titleEl?.textContent?.trim() || '';
-
-          // Artist
-          const artistEl = document.querySelector('.subtitle .yt-formatted-string') ||
-                           document.querySelector('yt-formatted-string.byline-text');
-          const artist = artistEl?.textContent?.trim() || '';
-
-          // Album art
-          const imgEl = document.querySelector('#thumbnail img') ||
-                        document.querySelector('img.ytmusic-player-bar');
-          const thumbnailUrl = imgEl?.src || '';
-
-          // Album
-          const albumEl = document.querySelectorAll('.subtitle .yt-formatted-string')?.[1];
-          const album = albumEl?.textContent?.trim() || '';
-
-          // Play state
-          const playBtn = document.querySelector('.play-pause-button');
-          const isPaused = playBtn?.getAttribute('aria-label')?.toLowerCase()?.includes('play') ?? true;
-          const isPlaying = !isPaused && title.length > 0;
-
-          // Progress
-          const progressEl = document.querySelector('#progress-bar');
-          const currentTime = progressEl ? parseFloat(progressEl.value) || 0 : 0;
-          const duration = progressEl ? parseFloat(progressEl.max) || 0 : 0;
-
-          // Video ID
-          const urlParams = new URLSearchParams(window.location.search);
-          const videoId = urlParams.get('v') || '';
-
-          return { title, artist, album, thumbnailUrl, isPlaying, currentTime, duration, videoId };
-        } catch(e) {
-          return null;
-        }
-      }
-
-      let lastTitle = '';
-      let lastPlaying = null;
-
-      setInterval(() => {
-        const info = getTrackInfo();
-        if (!info) return;
-        // Send update if track changed or play state changed
-        if (info.title !== lastTitle || info.isPlaying !== lastPlaying) {
-          lastTitle = info.title;
-          lastPlaying = info.isPlaying;
-          window.postMessage({ type: 'YTM_TRACK_UPDATE', payload: info }, '*');
-        }
-      }, 1500);
+      try {
+        const titleEl = document.querySelector('.title.ytmusic-player-bar') || document.querySelector('yt-formatted-string.title');
+        const title = titleEl?.textContent?.trim() || '';
+        const artistEl = document.querySelector('.subtitle .yt-formatted-string') || document.querySelector('yt-formatted-string.byline-text');
+        const artist = artistEl?.textContent?.trim() || '';
+        const imgEl = document.querySelector('#thumbnail img') || document.querySelector('img.ytmusic-player-bar');
+        const thumbnailUrl = imgEl?.src || '';
+        const albumEl = document.querySelectorAll('.subtitle .yt-formatted-string')?.[1];
+        const album = albumEl?.textContent?.trim() || '';
+        const playBtn = document.querySelector('.play-pause-button');
+        const isPaused = playBtn?.getAttribute('aria-label')?.toLowerCase()?.includes('play') ?? true;
+        const isPlaying = !isPaused && title.length > 0;
+        const progressEl = document.querySelector('#progress-bar');
+        const currentTime = progressEl ? parseFloat(progressEl.value) || 0 : 0;
+        const duration = progressEl ? parseFloat(progressEl.max) || 0 : 0;
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('v') || '';
+        return { title, artist, album, thumbnailUrl, isPlaying, currentTime, duration, videoId };
+      } catch(e) { return null; }
     })();
   `;
 
-  try {
-    webview.executeJavaScript(scraperCode);
-  } catch(e) {
-    console.error('Scraper inject failed:', e);
-  }
+  trackPollInterval = setInterval(async () => {
+    try {
+      const info = await webview.executeJavaScript(getInfoCode);
+      if (!info) return;
+      
+      if (info.title !== lastTitle || info.isPlaying !== lastPlaying) {
+        lastTitle = info.title;
+        lastPlaying = info.isPlaying;
+        
+        // Update local UI
+        currentTrack = info;
+        updatePreview(currentTrack);
+        // Send to main process (Discord RPC)
+        window.ytmusic.updateTrack(currentTrack);
+      }
+    } catch(e) { /* ignore errors during nav */ }
+  }, 1500);
 }
 
-// Listen for track updates from the webview via IPC message
-webview.addEventListener('ipc-message', (e) => {
-  if (e.channel === 'track-update') {
-    window.ytmusic.updateTrack(e.args[0]);
-  }
-});
-
-// Re-inject scraper on navigation
+// Re-start scraper on navigation
 webview.addEventListener('did-navigate-in-page', () => {
   setTimeout(startTrackScraper, 1000);
 });
 webview.addEventListener('did-navigate', () => {
   setTimeout(startTrackScraper, 2000);
+});
+
+// After Google sign-in completes in the auth popup, reload the webview
+// so it picks up the fresh session cookies
+window.ytmusic.on('auth:reload-webview', () => {
+  webview.loadURL('https://music.youtube.com');
 });
 
 // ─── Controls from tray ───────────────────────────────────────────────────────
