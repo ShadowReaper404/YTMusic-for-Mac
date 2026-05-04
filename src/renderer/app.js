@@ -49,6 +49,7 @@ webview.addEventListener('did-stop-loading', () => {
 let trackPollInterval = null;
 let lastTitle = '';
 let lastPlaying = null;
+let lastThumbnail = '';
 
 function startTrackScraper() {
   clearInterval(trackPollInterval);
@@ -59,6 +60,8 @@ function startTrackScraper() {
       try {
         const titleEl = document.querySelector('.title.ytmusic-player-bar') || document.querySelector('yt-formatted-string.title');
         const title = titleEl?.textContent?.trim() || '';
+        if (!title) return null; // Don't send empty updates during song transitions
+
         const artistEl = document.querySelector('.subtitle .yt-formatted-string') || document.querySelector('yt-formatted-string.byline-text');
         const artist = artistEl?.textContent?.trim() || '';
         const imgEl = document.querySelector('#thumbnail img') || document.querySelector('img.ytmusic-player-bar');
@@ -83,9 +86,10 @@ function startTrackScraper() {
       const info = await webview.executeJavaScript(getInfoCode);
       if (!info) return;
       
-      if (info.title !== lastTitle || info.isPlaying !== lastPlaying) {
+      if (info.title !== lastTitle || info.isPlaying !== lastPlaying || info.thumbnailUrl !== lastThumbnail) {
         lastTitle = info.title;
         lastPlaying = info.isPlaying;
+        lastThumbnail = info.thumbnailUrl;
         
         // Update local UI
         currentTrack = info;

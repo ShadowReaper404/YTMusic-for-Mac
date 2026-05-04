@@ -135,16 +135,12 @@ class DiscordRPCManager {
     }
 
     // Images
-    // Discord now supports external HTTPS URLs directly in the image keys.
-    // Instead of requiring the user to upload static assets to the Developer Portal,
-    // we just pass the live album art thumbnail!
-    // Note: YTM initially uses a data: URI for thumbnails, which crashes Discord RPC.
+    // Use the live album art if it's a valid HTTP URL. Ignore data: URI placeholders
+    // that YouTube Music briefly uses during song transitions.
     if (track.thumbnailUrl && track.thumbnailUrl.startsWith('http')) {
       activity.largeImageKey = track.thumbnailUrl;
       activity.largeImageText = track.album || 'YouTube Music';
     } else {
-      // Fallback public logo if no valid thumbnail is available
-      activity.largeImageKey = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Youtube_Music_icon.svg/512px-Youtube_Music_icon.svg.png';
       activity.largeImageText = 'YouTube Music';
     }
     
@@ -168,13 +164,21 @@ class DiscordRPCManager {
 
   destroy() {
     clearTimeout(this._reconnectTimer);
+    this.isConnected = false;
+    
     if (this.client) {
       try {
-        this.client.destroy();
+        // Explicitly clear the activity so Discord doesn't hang onto it
+        this.client.clearActivity().catch(() => {});
+        
+        // Wait just a tiny bit for the IPC packet to flush before severing the socket
+        const c = this.client;
+        setTimeout(() => {
+          try { c.destroy(); } catch {}
+        }, 100);
       } catch {}
       this.client = null;
     }
-    this.isConnected = false;
   }
 }
 
